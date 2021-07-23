@@ -17,8 +17,11 @@ import android.media.MediaRecorder;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Binder;
+import android.os.Build;
 import android.os.IBinder;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
+import android.util.Log;
 
 import com.mask.mediaprojection.interfaces.MediaProjectionNotificationEngine;
 import com.mask.mediaprojection.interfaces.MediaRecorderCallback;
@@ -27,6 +30,7 @@ import com.mask.mediaprojection.utils.FileUtils;
 import com.mask.mediaprojection.utils.MediaProjectionHelper;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -35,23 +39,25 @@ import java.nio.ByteBuffer;
  */
 public class MediaProjectionService extends Service {
 
+    private static final String TAG = "MediaProjectionService";
+
     private static final int ID_MEDIA_PROJECTION = MediaProjectionHelper.REQUEST_CODE;
 
     private DisplayMetrics displayMetrics;
-    private boolean isScreenCaptureEnable;// 是否可以屏幕截图
-    private boolean isMediaRecorderEnable;// 是否可以媒体录制
+    private boolean        isScreenCaptureEnable;// 是否可以屏幕截图
+    private boolean        isMediaRecorderEnable;// 是否可以媒体录制
 
     private MediaProjectionManager mediaProjectionManager;
-    private MediaProjection mediaProjection;
+    private MediaProjection        mediaProjection;
 
     private VirtualDisplay virtualDisplayImageReader;
-    private ImageReader imageReader;
-    private boolean isImageAvailable;
+    private ImageReader    imageReader;
+    private boolean        isImageAvailable;
 
-    private VirtualDisplay virtualDisplayMediaRecorder;
-    private MediaRecorder mediaRecorder;
-    private File mediaFile;
-    private boolean isMediaRecording;
+    private VirtualDisplay        virtualDisplayMediaRecorder;
+    private MediaRecorder         mediaRecorder;
+    private File                  mediaFile;
+    private boolean               isMediaRecording;
     private MediaRecorderCallback mediaRecorderCallback;
 
     private MediaProjectionNotificationEngine notificationEngine;
@@ -162,8 +168,8 @@ public class MediaProjectionService extends Service {
      * 创建 屏幕截图
      */
     private void createImageReader() {
-        int width = displayMetrics.widthPixels;
-        int height = displayMetrics.heightPixels;
+        int width      = displayMetrics.widthPixels;
+        int height     = displayMetrics.heightPixels;
         int densityDpi = displayMetrics.densityDpi;
 
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
@@ -184,60 +190,111 @@ public class MediaProjectionService extends Service {
      */
     @SuppressLint("WrongConstant")
     private void createMediaRecorder() {
-        int width = displayMetrics.widthPixels;
-        int height = displayMetrics.heightPixels;
+        int width      = displayMetrics.widthPixels;
+        int height     = displayMetrics.heightPixels;
         int densityDpi = displayMetrics.densityDpi;
+
+        // 创建保存路径
+        final File dirFile = FileUtils.getCacheMovieDir(this);
+        boolean    mkdirs  = dirFile.mkdirs();
+        // 创建保存文件
+        mediaFile = new File(dirFile, FileUtils.getDateName("MediaRecorder") + ".mp4");
+
+
+        if (false) {
+
 
 //        AudioManager mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
 //        mAudioManager.setRemoteSubmixOn(true, 0);
 
 
 
-        // 创建保存路径
-        final File dirFile = FileUtils.getCacheMovieDir(this);
-        boolean mkdirs = dirFile.mkdirs();
-        // 创建保存文件
-        mediaFile = new File(dirFile, FileUtils.getDateName("MediaRecorder") + ".mp4");
-
-        // 调用顺序不能乱
-        mediaRecorder = new MediaRecorder();
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+            // 调用顺序不能乱
+            mediaRecorder = new MediaRecorder();
+            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
 //        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);// sucess
 //        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
 //        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.REMOTE_SUBMIX);
-        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        mediaRecorder.setOutputFile(mediaFile.getAbsolutePath());
-        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-        mediaRecorder.setVideoSize(width, height);
-        mediaRecorder.setVideoFrameRate(30);
-        mediaRecorder.setVideoEncodingBitRate(5 * width * height);
+            mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            mediaRecorder.setOutputFile(mediaFile.getAbsolutePath());
+            mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+            mediaRecorder.setVideoSize(width, height);
+            mediaRecorder.setVideoFrameRate(30);
+            mediaRecorder.setVideoEncodingBitRate(5 * width * height);
 
-        //设置声音编码
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+            //设置声音编码
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
 
-        mediaRecorder.setOnErrorListener(new MediaRecorder.OnErrorListener() {
-            @Override
-            public void onError(MediaRecorder mr, int what, int extra) {
-                if (mediaRecorderCallback != null) {
-                    mediaRecorderCallback.onFail();
+            mediaRecorder.setOnErrorListener(new MediaRecorder.OnErrorListener() {
+                @Override
+                public void onError(MediaRecorder mr, int what, int extra) {
+                    if (mediaRecorderCallback != null) {
+                        mediaRecorderCallback.onFail();
+                    }
                 }
+            });
+
+            try {
+                mediaRecorder.prepare();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        });
 
-        try {
-            mediaRecorder.prepare();
-        } catch (Exception e) {
-            e.printStackTrace();
+            if (virtualDisplayMediaRecorder == null) {
+                virtualDisplayMediaRecorder = mediaProjection.createVirtualDisplay("MediaRecorder",
+                        width, height, densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                        mediaRecorder.getSurface(), null, null);
+            } else {
+                virtualDisplayMediaRecorder.setSurface(mediaRecorder.getSurface());
+            }
         }
 
-        if (virtualDisplayMediaRecorder == null) {
-            virtualDisplayMediaRecorder = mediaProjection.createVirtualDisplay("MediaRecorder",
-                    width, height, densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    mediaRecorder.getSurface(), null, null);
-        } else {
-            virtualDisplayMediaRecorder.setSurface(mediaRecorder.getSurface());
+
+
+
+
+        if (true){
+            width = 1080;
+            height = 720;
+            densityDpi = 1;
+
+            mediaRecorder = new MediaRecorder();
+            //设置声音来源
+            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            //设置视频来源
+            mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+            //设置视频格式
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            //设置视频储存地址
+            //if (TextUtils.isEmpty(path)) path = getsaveDirectory() + System.currentTimeMillis() + "."+type;
+            mediaRecorder.setOutputFile(mediaFile.getAbsolutePath());
+            //设置视频大小
+            mediaRecorder.setVideoSize(width, height);
+            //设置视频编码
+            mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+            //设置声音编码
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+            //视频码率
+            mediaRecorder.setVideoEncodingBitRate(4 * 1920 * 1080);
+            //视频帧率
+//        mediaRecorder.setVideoFrameRate(18);
+            mediaRecorder.setVideoFrameRate(30);
+            try {
+                mediaRecorder.prepare();
+            } catch (IOException e) {
+                Log.e(TAG, "ediaRecorder.prepare()出现异常 ==> " + e.getMessage());
+            }
         }
+
+
+        virtualDisplayMediaRecorder = mediaProjection.createVirtualDisplay("MainScreen", width, height, densityDpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, mediaRecorder.getSurface(), null, null);
+
+
+
+
+
     }
 
     /**
@@ -312,15 +369,15 @@ public class MediaProjectionService extends Service {
         }
 
         // 获取数据
-        int width = image.getWidth();
-        int height = image.getHeight();
-        final Image.Plane plane = image.getPlanes()[0];
-        final ByteBuffer buffer = plane.getBuffer();
+        int               width  = image.getWidth();
+        int               height = image.getHeight();
+        final Image.Plane plane  = image.getPlanes()[0];
+        final ByteBuffer  buffer = plane.getBuffer();
 
         // 重新计算Bitmap宽度，防止Bitmap显示错位
         int pixelStride = plane.getPixelStride();
-        int rowStride = plane.getRowStride();
-        int rowPadding = rowStride - pixelStride * width;
+        int rowStride   = plane.getRowStride();
+        int rowPadding  = rowStride - pixelStride * width;
         int bitmapWidth = width + rowPadding / pixelStride;
 
         // 创建Bitmap
