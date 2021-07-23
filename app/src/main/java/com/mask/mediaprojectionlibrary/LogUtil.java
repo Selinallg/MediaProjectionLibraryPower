@@ -17,19 +17,20 @@ public class LogUtil {
 
     private static final String customTagPrefix = "x_log";
 
-    private static final boolean isDebug = BuildConfig.DEBUG;
+    private static final boolean isDebug = true;
 
     private LogUtil() {
     }
 
     private static String generateTag() {
-        StackTraceElement caller = new Throwable().getStackTrace()[2];
-        String tag = "%s.%s(L:%d)";
-        String callerClazzName = caller.getClassName();
-        callerClazzName = callerClazzName.substring(callerClazzName.lastIndexOf(".") + 1);
-        tag = String.format(Locale.getDefault(), tag, callerClazzName, caller.getMethodName(), caller.getLineNumber());
-        tag = TextUtils.isEmpty(customTagPrefix) ? tag : customTagPrefix + ":" + tag;
-        return tag;
+//        StackTraceElement caller = new Throwable().getStackTrace()[2];
+//        String tag = "%s.%s(L:%d)";
+//        String callerClazzName = caller.getClassName();
+//        callerClazzName = callerClazzName.substring(callerClazzName.lastIndexOf(".") + 1);
+//        tag = String.format(Locale.getDefault(), tag, callerClazzName, caller.getMethodName(), caller.getLineNumber());
+//        tag = TextUtils.isEmpty(customTagPrefix) ? tag : customTagPrefix + ":" + tag;
+//        return tag;
+        return "x_log";
     }
 
     public static void d(String content) {

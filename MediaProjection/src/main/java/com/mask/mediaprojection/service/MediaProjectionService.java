@@ -1,5 +1,6 @@
 package com.mask.mediaprojection.service;
 
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
@@ -9,6 +10,7 @@ import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
+import android.media.AudioManager;
 import android.media.Image;
 import android.media.ImageReader;
 import android.media.MediaRecorder;
@@ -180,10 +182,16 @@ public class MediaProjectionService extends Service {
     /**
      * 创建 媒体录制
      */
+    @SuppressLint("WrongConstant")
     private void createMediaRecorder() {
         int width = displayMetrics.widthPixels;
         int height = displayMetrics.heightPixels;
         int densityDpi = displayMetrics.densityDpi;
+
+//        AudioManager mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+//        mAudioManager.setRemoteSubmixOn(true, 0);
+
+
 
         // 创建保存路径
         final File dirFile = FileUtils.getCacheMovieDir(this);
@@ -193,6 +201,10 @@ public class MediaProjectionService extends Service {
 
         // 调用顺序不能乱
         mediaRecorder = new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+//        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);// sucess
+//        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+//        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.REMOTE_SUBMIX);
         mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         mediaRecorder.setOutputFile(mediaFile.getAbsolutePath());
@@ -200,6 +212,9 @@ public class MediaProjectionService extends Service {
         mediaRecorder.setVideoSize(width, height);
         mediaRecorder.setVideoFrameRate(30);
         mediaRecorder.setVideoEncodingBitRate(5 * width * height);
+
+        //设置声音编码
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
 
         mediaRecorder.setOnErrorListener(new MediaRecorder.OnErrorListener() {
             @Override

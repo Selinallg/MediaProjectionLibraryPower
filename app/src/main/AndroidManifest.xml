@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.mask.mediaprojectionlibrary">
 
+<!--    android:sharedUserId="android.uid.system"-->
+
+    <permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT" />
+
     <application
         android:name=".BaseApplication"
         android:allowBackup="false"

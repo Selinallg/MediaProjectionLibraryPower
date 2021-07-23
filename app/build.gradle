@@ -11,14 +11,40 @@ android {
         versionName var.versionName
     }
 
+    // 签名配置
+    signingConfigs {
+        release {
+            try {
+                storeFile file("./keystore/noloKeyStore")
+//                storeFile file("./keystore/noloKeyStore-system")
+//                storeFile file("./keystore/nolo-quli-KeyStore-system")
+                storePassword "nolovr"
+                keyAlias "nolo"
+                keyPassword "nolovr"
+            } catch (ex) {
+                throw new InvalidUserDataException(ex.toString())
+            }
+        }
+
+        debug {
+            storeFile file("./keystore/noloKeyStore")
+            storePassword "nolovr"
+            keyAlias "nolo"
+            keyPassword "nolovr"
+        }
+    }
+
+
     buildTypes {
         debug {
             minifyEnabled false
+            signingConfig signingConfigs.debug
         }
 
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
     }
 
