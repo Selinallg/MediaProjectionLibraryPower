@@ -27,7 +27,8 @@ android {
         }
 
         debug {
-            storeFile file("./keystore/noloKeyStore")
+            storeFile file("./keystore/noloKeyStore-system")
+//            storeFile file("./keystore/noloKeyStore")
             storePassword "nolovr"
             keyAlias "nolo"
             keyPassword "nolovr"
