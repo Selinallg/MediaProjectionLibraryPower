@@ -1,12 +1,14 @@
 package com.mask.mediaprojection.service;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Bitmap;
+import android.graphics.ImageFormat;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -27,7 +29,9 @@ import com.mask.mediaprojection.interfaces.MediaProjectionNotificationEngine;
 import com.mask.mediaprojection.interfaces.MediaRecorderCallback;
 import com.mask.mediaprojection.interfaces.ScreenCaptureCallback;
 import com.mask.mediaprojection.utils.FileUtils;
+import com.mask.mediaprojection.utils.MediaCaptureTool;
 import com.mask.mediaprojection.utils.MediaProjectionHelper;
+import com.mask.mediaprojection.utils.RecorderParam;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,7 +43,7 @@ import java.nio.ByteBuffer;
  */
 public class MediaProjectionService extends Service {
 
-    private static final String TAG = "MediaProjectionService";
+    private static final String TAG = "MediaProjectionService-yufeng";
 
     private static final int ID_MEDIA_PROJECTION = MediaProjectionHelper.REQUEST_CODE;
 
@@ -58,9 +62,12 @@ public class MediaProjectionService extends Service {
     private MediaRecorder         mediaRecorder;
     private File                  mediaFile;
     private boolean               isMediaRecording;
+    private boolean bAudioSystem = false;
     private MediaRecorderCallback mediaRecorderCallback;
+    private static final int Mbps = (int)Math.pow(10,6);
 
     private MediaProjectionNotificationEngine notificationEngine;
+    MediaCaptureTool.AudioRecorderThread audioRecorderThread;
 
     public class MediaProjectionBinder extends Binder {
 
@@ -143,7 +150,7 @@ public class MediaProjectionService extends Service {
      * 结束 媒体录制
      */
     private void stopMediaRecorder() {
-        stopRecording();
+        stopRecording(bAudioSystem);
 
         if (virtualDisplayMediaRecorder != null) {
             virtualDisplayMediaRecorder.release();
@@ -167,11 +174,12 @@ public class MediaProjectionService extends Service {
     /**
      * 创建 屏幕截图
      */
+    @SuppressLint("WrongConstant")
+    @TargetApi(29)
     private void createImageReader() {
         int width      = displayMetrics.widthPixels;
         int height     = displayMetrics.heightPixels;
         int densityDpi = displayMetrics.densityDpi;
-
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
         imageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
             @Override
@@ -189,7 +197,7 @@ public class MediaProjectionService extends Service {
      * 创建 媒体录制
      */
     @SuppressLint("WrongConstant")
-    private void createMediaRecorder() {
+    private void createMediaRecorder(boolean bMic) {
         int width      = displayMetrics.widthPixels;
         int height     = displayMetrics.heightPixels;
         int densityDpi = displayMetrics.densityDpi;
@@ -201,20 +209,35 @@ public class MediaProjectionService extends Service {
         mediaFile = new File(dirFile, FileUtils.getDateName("MediaRecorder") + ".mp4");
 
 
-        if (false) {
+        if (true) {
+
+
+//            AudioManager audioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
+            //设置声音模式
+//            audioManager.setMode(AudioManager.STREAM_MUSIC);
+            //关闭麦克风
+//            audioManager.setMicrophoneMute(false);
+
+//            int     mode           = audioManager.getMode();
+//            boolean microphoneMute = audioManager.isMicrophoneMute();
+//            Log.d(TAG, "createMediaRecorder: audioManager.getMode()=" + mode);
+//            Log.d(TAG, "createMediaRecorder: audioManager.microphoneMute()=" + microphoneMute);
 
 
 //        AudioManager mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
 //        mAudioManager.setRemoteSubmixOn(true, 0);
 
 
-
             // 调用顺序不能乱
             mediaRecorder = new MediaRecorder();
-            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
-//        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);// sucess
-//        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-//        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.REMOTE_SUBMIX);
+//            mediaRecorder.setAudioSource(-1);//
+            if (bMic){
+                mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            }
+            //mediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);// YES
+        //mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);// sucess
+        //mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+//           //mediaRecorder.setAudioSource(MediaRecorder.AudioSource.REMOTE_SUBMIX);
             mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
             mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
             mediaRecorder.setOutputFile(mediaFile.getAbsolutePath());
@@ -224,12 +247,14 @@ public class MediaProjectionService extends Service {
             mediaRecorder.setVideoEncodingBitRate(5 * width * height);
 
             //设置声音编码
-            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
+            mediaRecorder.setAudioSamplingRate(16000);
 
             mediaRecorder.setOnErrorListener(new MediaRecorder.OnErrorListener() {
                 @Override
                 public void onError(MediaRecorder mr, int what, int extra) {
                     if (mediaRecorderCallback != null) {
+                        Log.i("yufeng","createMediaRecorder 111");
                         mediaRecorderCallback.onFail();
                     }
                 }
@@ -251,10 +276,7 @@ public class MediaProjectionService extends Service {
         }
 
 
-
-
-
-        if (true){
+        if (false) {
             width = 1080;
             height = 720;
             densityDpi = 1;
@@ -291,10 +313,7 @@ public class MediaProjectionService extends Service {
         virtualDisplayMediaRecorder = mediaProjection.createVirtualDisplay("MainScreen", width, height, densityDpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, mediaRecorder.getSurface(), null, null);
 
-
-
-
-
+        Log.i("yufeng","createMediaRecorder eeend");
     }
 
     /**
@@ -316,6 +335,7 @@ public class MediaProjectionService extends Service {
      * @param isMediaRecorderEnable 是否可以媒体录制
      */
     public void createVirtualDisplay(int resultCode, Intent data, DisplayMetrics displayMetrics, boolean isScreenCaptureEnable, boolean isMediaRecorderEnable) {
+        Log.d(TAG, "createVirtualDisplay: ");
         this.displayMetrics = displayMetrics;
         this.isScreenCaptureEnable = isScreenCaptureEnable;
         this.isMediaRecorderEnable = isMediaRecorderEnable;
@@ -401,7 +421,7 @@ public class MediaProjectionService extends Service {
      *
      * @param callback callback
      */
-    public void startRecording(MediaRecorderCallback callback) {
+    public void startRecording(MediaRecorderCallback callback, RecorderParam recorderParam) {
         this.mediaRecorderCallback = callback;
         if (!isMediaRecorderEnable) {
             if (mediaRecorderCallback != null) {
@@ -415,10 +435,18 @@ public class MediaProjectionService extends Service {
             }
             return;
         }
+        if (recorderParam.getSoundSource() != RecorderParam.SOUND_SOURCE.SYSTEM) {
+            bAudioSystem = false;
+            boolean micOrMute = recorderParam.getSoundSource() == RecorderParam.SOUND_SOURCE.MIC;
+            createMediaRecorder(micOrMute);
+            mediaRecorder.start();
+        } else if (recorderParam.getSoundSource() == RecorderParam.SOUND_SOURCE.SYSTEM) {
+            bAudioSystem = true;
+            audioRecorderThread =
+                    new MediaCaptureTool.AudioRecorderThread(callback,recorderParam,mediaProjection);
+            new Thread(audioRecorderThread).start();
+        }
 
-        createMediaRecorder();
-
-        mediaRecorder.start();
 
         isMediaRecording = true;
     }
@@ -426,36 +454,40 @@ public class MediaProjectionService extends Service {
     /**
      * 停止 媒体录制
      */
-    public void stopRecording() {
-        if (!isMediaRecorderEnable) {
-            if (mediaRecorderCallback != null) {
-                mediaRecorderCallback.onFail();
+    public void stopRecording(boolean bSystem) {
+        if (!bSystem) {
+            if (!isMediaRecorderEnable) {
+                if (mediaRecorderCallback != null) {
+                    mediaRecorderCallback.onFail();
+                }
             }
-        }
 
-        if (mediaRecorder == null) {
-            if (mediaRecorderCallback != null) {
-                mediaRecorderCallback.onFail();
+            if (mediaRecorder == null) {
+                if (mediaRecorderCallback != null) {
+                    mediaRecorderCallback.onFail();
+                }
+                return;
             }
-            return;
-        }
-        if (!isMediaRecording) {
-            if (mediaRecorderCallback != null) {
-                mediaRecorderCallback.onFail();
+            if (!isMediaRecording) {
+                if (mediaRecorderCallback != null) {
+                    mediaRecorderCallback.onFail();
+                }
+                return;
             }
-            return;
+            Log.d(TAG, "stopRecording: ");
+            mediaRecorder.stop();
+            mediaRecorder.reset();
+            mediaRecorder.release();
+
+            mediaRecorder = null;
+
+            if (mediaRecorderCallback != null) {
+                mediaRecorderCallback.onSuccess(mediaFile);
+            }
+            mediaFile = null;
+        } else {
+            audioRecorderThread.stopRecorder();
         }
-
-        mediaRecorder.stop();
-        mediaRecorder.reset();
-        mediaRecorder.release();
-
-        mediaRecorder = null;
-
-        if (mediaRecorderCallback != null) {
-            mediaRecorderCallback.onSuccess(mediaFile);
-        }
-        mediaFile = null;
 
         isMediaRecording = false;
 

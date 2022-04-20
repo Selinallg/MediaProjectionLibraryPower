@@ -35,13 +35,14 @@ public class FileUtils {
      * @return String
      */
     public static String getDateName(String prefix) {
-        date.setTime(System.currentTimeMillis());
-        String dateStr = dateFormat.format(date);
-        if (!TextUtils.isEmpty(prefix)) {
-            return prefix + "_" + dateStr;
-        } else {
-            return dateStr;
-        }
+//        date.setTime(System.currentTimeMillis());
+//        String dateStr = dateFormat.format(date);
+//        if (!TextUtils.isEmpty(prefix)) {
+//            return prefix + "_" + dateStr;
+//        } else {
+//            return dateStr;
+//        }
+        return "demo";
     }
 
     /**

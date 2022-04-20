@@ -8,6 +8,7 @@ import android.content.ServiceConnection;
 import android.media.projection.MediaProjectionManager;
 import android.os.IBinder;
 import android.util.DisplayMetrics;
+import android.util.Log;
 
 import com.mask.mediaprojection.interfaces.MediaProjectionNotificationEngine;
 import com.mask.mediaprojection.interfaces.MediaRecorderCallback;
@@ -41,6 +42,7 @@ public class MediaProjectionHelper {
 
     private ServiceConnection serviceConnection;
     private MediaProjectionService mediaProjectionService;
+    private boolean bSystem = false;
 
     /**
      * 设置 通知引擎
@@ -148,12 +150,17 @@ public class MediaProjectionHelper {
      *
      * @param callback callback
      */
-    public void startMediaRecorder(MediaRecorderCallback callback) {
+    public void startMediaRecorder(MediaRecorderCallback callback,RecorderParam recorderParam) {
         if (mediaProjectionService == null) {
             callback.onFail();
             return;
         }
-        mediaProjectionService.startRecording(callback);
+
+        if (recorderParam.getSoundSource() == RecorderParam.SOUND_SOURCE.SYSTEM){
+            bSystem = true;
+        }
+        mediaProjectionService.startRecording(callback,recorderParam);
+        Log.i("yufeng","startMediaRecorder end");
     }
 
     /**
@@ -163,7 +170,7 @@ public class MediaProjectionHelper {
         if (mediaProjectionService == null) {
             return;
         }
-        mediaProjectionService.stopRecording();
+        mediaProjectionService.stopRecording(bSystem);
     }
 
 }
