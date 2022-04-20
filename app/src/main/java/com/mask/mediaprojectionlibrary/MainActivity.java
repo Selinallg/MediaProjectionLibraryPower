@@ -5,9 +5,12 @@ import android.app.Notification;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -19,6 +22,7 @@ import com.mask.mediaprojection.interfaces.MediaProjectionNotificationEngine;
 import com.mask.mediaprojection.interfaces.MediaRecorderCallback;
 import com.mask.mediaprojection.interfaces.ScreenCaptureCallback;
 import com.mask.mediaprojection.utils.MediaProjectionHelper;
+import com.mask.mediaprojection.utils.RecorderParam;
 import com.mask.photo.interfaces.SaveBitmapCallback;
 import com.mask.photo.utils.BitmapUtils;
 
@@ -36,11 +40,19 @@ public class MainActivity extends AppCompatActivity {
     private Button btn_screen_capture;
     private Button btn_media_recorder_start;
     private Button btn_media_recorder_stop;
+    private static final int REQUEST_CODE_CONTACT = 101;
+    private static final int REQUEST_SCREEN_CAPTION_CODE = 100;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        MediaProjectionHelper.getInstance().createVirtualDisplay(requestCode, resultCode, data, true, true);
+        Log.d("yufeng", "onActivityResult: requestCode" +requestCode);
+        if (requestCode == REQUEST_SCREEN_CAPTION_CODE){
+            Log.d("yufeng", "onActivityResult: createVirtualDisplay");
+            MediaProjectionHelper.getInstance().createVirtualDisplay(requestCode, resultCode, data, true, true);
+        } else {
+            MediaProjectionHelper.getInstance().createVirtualDisplay(requestCode, resultCode, data, true, true);
+        }
     }
 
     @Override
@@ -54,9 +66,12 @@ public class MainActivity extends AppCompatActivity {
     }
     private void initPermissions() {
         if (Build.VERSION.SDK_INT >= 23) {
-            int REQUEST_CODE_CONTACT = 101;
-            String[] permissions = {Manifest.permission.RECORD_AUDIO,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+            //int REQUEST_CODE_CONTACT = 101;
+            String[] permissions = {
+                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.MODIFY_AUDIO_SETTINGS,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    Manifest.permission.READ_EXTERNAL_STORAGE};
             //验证是否许可权限
             for (String str : permissions) {
                 if (this.checkSelfPermission(str) != PackageManager.PERMISSION_GRANTED) {
@@ -186,6 +201,8 @@ public class MainActivity extends AppCompatActivity {
      * 开始屏幕录制
      */
     private void doMediaRecorderStart() {
+        LogUtil.i("doMediaRecorderStart");
+        RecorderParam recorderParam = createRecorderParam();
         MediaProjectionHelper.getInstance().startMediaRecorder(new MediaRecorderCallback() {
             @Override
             public void onSuccess(File file) {
@@ -202,7 +219,25 @@ public class MainActivity extends AppCompatActivity {
 
                 LogUtil.e("MediaRecorder onFail");
             }
-        });
+        },recorderParam);
+        LogUtil.i("doMediaRecorderStart end");
+    }
+
+    private RecorderParam createRecorderParam() {
+        RecorderParam recorderParam = new RecorderParam();
+        recorderParam.setResolution(RecorderParam.RESOLUTION.LOW);
+        recorderParam.setOrientation(RecorderParam.ORIENTATION.DEGREE_0);
+        recorderParam.setFrameRate(RecorderParam.FRAME_RATE.FPS_15);
+        recorderParam.setSoundSource(RecorderParam.SOUND_SOURCE.SYSTEM);
+        recorderParam.setQuality(RecorderParam.QUALITY.MBPS_16);
+        return  recorderParam;
+    }
+
+    private void RequestScreenCapturePermission(){
+        MediaProjectionManager _mediaProjectionManager =
+                (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+        Intent captureIntent = _mediaProjectionManager.createScreenCaptureIntent();
+        this.startActivityForResult(captureIntent, REQUEST_SCREEN_CAPTION_CODE);
     }
 
     /**

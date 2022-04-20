@@ -15,7 +15,7 @@ import java.util.Locale;
  */
 public class LogUtil {
 
-    private static final String customTagPrefix = "x_log";
+    private static final String customTagPrefix = "x_log-yufeng";
 
     private static final boolean isDebug = true;
 
@@ -30,7 +30,7 @@ public class LogUtil {
 //        tag = String.format(Locale.getDefault(), tag, callerClazzName, caller.getMethodName(), caller.getLineNumber());
 //        tag = TextUtils.isEmpty(customTagPrefix) ? tag : customTagPrefix + ":" + tag;
 //        return tag;
-        return "x_log";
+        return "x_log-yufeng";
     }
 
     public static void d(String content) {
